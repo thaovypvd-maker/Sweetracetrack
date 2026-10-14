@@ -1,10 +1,8 @@
 import streamlit as st
-import time
-import random
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Đường Đua Ngọt Ngào - Sweet Racetrack", layout="centered")
 
-# CSS tùy chỉnh giao diện ngọt ngào, màu hồng và nâu bánh kem
 st.markdown("""
     <style>
     .stApp {
@@ -17,118 +15,158 @@ st.markdown("""
         font-family: 'Courier New', monospace;
         text-shadow: 2px 2px #ffb3c6;
     }
-    .game-box {
-        background-color: #fff0f3;
-        border: 4px dashed #ff758c;
-        border-radius: 20px;
-        padding: 20px;
-        text-align: center;
-        box-shadow: 0 8px 16px rgba(255, 117, 140, 0.3);
-    }
-    .stButton>button {
-        background-color: #ff758c;
-        color: white;
-        font-size: 20px;
-        font-weight: bold;
-        border-radius: 15px;
-        border: none;
-        padding: 10px 24px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    .stButton>button:hover {
-        background-color: #ff4d6d;
-        color: white;
-    }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown("<h1>🍰 ĐƯỜNG ĐUA NGỌT NGÀO - SWEET RACETRACK 🍮</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-weight: bold; color: #780000;'>Né chướng ngại vật nông trại hồng trong 30 giây để chiến thắng nhé!</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-weight: bold; color: #780000;'>Game né chướng ngại vật bánh kem nông trại hồng cực mượt!</p>", unsafe_allow_html=True)
 
-# Khởi tạo trạng thái game
-if 'game_started' not in st.session_state:
-    st.session_state.game_started = False
-if 'score' not in st.session_state:
-    st.session_state.score = 0
-if 'game_over' not in st.session_state:
-    st.session_state.game_over = False
-if 'won' not in st.session_state:
-    st.session_state.won = False
-if 'pudding_lane' not in st.session_state:
-    st.session_state.pudding_lane = 1 # 0: Trái, 1: Giữa, 2: Phải
+# Trò chơi dạng HTML trực quan chạy ngay trong khung web, bấm nút là nhân vật chạy né mượt mà
+game_html = """
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    background-color: #fff0f3;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    margin: 0;
+    padding: 10px;
+  }
+  .game-container {
+    background: #ffccd5;
+    border: 4px dashed #ff758c;
+    border-radius: 15px;
+    padding: 15px;
+    width: 280px;
+    margin: 0 auto;
+    box-shadow: 0 8px 16px rgba(255, 117, 140, 0.3);
+  }
+  .lane {
+    background: white;
+    margin: 8px 0;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #582f0e;
+  }
+  .active-lane {
+    background: #ffb3c6;
+    border: 2px solid #d90429;
+  }
+  button {
+    background-color: #ff758c;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 15px;
+    border: none;
+    padding: 12px 18px;
+    margin: 5px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  button:active {
+    background-color: #ff4d6d;
+    transform: scale(0.95);
+  }
+  #message {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 10px;
+    color: #d90429;
+  }
+</style>
+</head>
+<body>
 
-col1, col2, col3 = st.columns([1, 2, 1])
+<div class="game-container">
+  <div id="scoreText" style="font-weight: bold; color: #582f0e; margin-bottom: 10px;">Điểm né: 0 / 10</div>
+  
+  <div id="lane0" class="lane">Làn 1: 🌾 Nông Trại</div>
+  <div id="lane1" class="lane active-lane">Làn 2: 🍮 Pudding Kính Hồng</div>
+  <div id="lane2" class="lane">Làn 3: 🌾 Nông Trại</div>
 
-with col2:
-    if not st.session_state.game_started:
-        if st.button("🚀 BẮT ĐẦU CHƠI NGAY"):
-            st.session_state.game_started = True
-            st.session_state.score = 0
-            st.session_state.game_over = False
-            st.session_state.won = False
-            st.session_state.pudding_lane = 1
-            st.rerun()
-    else:
-        # Mô phỏng quá trình chạy đua
-        if not st.session_state.game_over and not st.session_state.won:
-            time.sleep(1)
-            st.session_state.score += 1
-            
-            # Kiểm tra chiến thắng sau 30 giây
-            if st.session_state.score >= 30:
-                st.session_state.won = True
-            else:
-                # Ngẫu nhiên xuất hiện chướng ngại vật ở một làn đường
-                obs_lane = random.choice([0, 1, 2])
-                if obs_lane == st.session_state.pudding_lane:
-                    st.session_state.game_over = True
-            st.rerun()
+  <div id="message">Hãy bấm nút để né!</div>
+</div>
 
-        # Hiển thị giao diện điều khiển làn đường cho cả máy tính & điện thoại mượt mà
-        c_left, c_mid, c_right = st.columns(3)
-        with c_left:
-            if st.button("⬅️ Sang Trái"):
-                st.session_state.pudding_lane = 0
-        with c_mid:
-            if st.button("⏺️ Giữa"):
-                st.session_state.pudding_lane = 1
-        with c_right:
-            if st.button("➡️ Sang Phải"):
-                st.session_state.pudding_lane = 2
+<div style="margin-top: 15px;">
+  <button onclick="changeLane(0)">⬅️ Trái</button>
+  <button onclick="changeLane(1)">⏺️ Giữa</button>
+  <button onclick="changeLane(2)">Phải ➡️</button>
+</div>
 
-        # Hiển thị đường đua nông trại bánh kem
-        lanes = ["🌾 [Nông trại] ", "🌾 [Nông trại] ", "🌾 [Nông trại] "]
-        lanes[st.session_state.pudding_lane] = "🍮 [Pudding Kính Hồng]"
+<script>
+let currentLane = 1;
+let obsLane = 0;
+let score = 0;
+let isPlaying = true;
 
-        st.markdown(f"""
-        <div class="game-box">
-            <h3>⏱️ Thời gian sống sót: {st.session_state.score} / 30 giây</h3>
-            <hr style="border: 2px dashed #ff758c;">
-            <p style="font-size: 22px; font-weight: bold;">Làn 1: {lanes[0]}</p>
-            <p style="font-size: 22px; font-weight: bold;">Làn 2: {lanes[1]}</p>
-            <p style="font-size: 22px; font-weight: bold;">Làn 3: {lanes[2]}</p>
-        </div>
-        """, unsafe_allow_html=True)
+function updateView() {
+  for (let i = 0; i < 3; i++) {
+    let el = document.getElementById("lane" + i);
+    let text = "Làn " + (i + 1) + ": 🌾 Nông Trại";
+    if (i === obsLane) {
+      text = "Làn " + (i + 1) + ": ⚠️ Vật Cản";
+    }
+    if (i === currentLane) {
+      text = "Làn " + (i + 1) + ": 🍮 Pudding Kính Hồng";
+    }
+    el.innerHTML = text;
+    
+    if (i === currentLane) {
+      el.className = "lane active-lane";
+    } else {
+      el.className = "lane";
+    }
+  }
+  document.getElementById("scoreText").innerText = "Điểm né: " + score + " / 10";
+}
 
-        # Thông báo Thắng / Thua
-        if st.session_state.won:
-            st.markdown("""
-                <div style="background-color: #ffb3c6; padding: 15px; border-radius: 15px; text-align: center; margin-top: 15px;">
-                    <h2 style="color: #9b2226;">🎉 XUẤT SẮC! CHIẾN THẮNG RỒI! 🎉</h2>
-                    <p style="color: #582f0e; font-weight: bold;">Muội đã bảo vệ bánh Pudding thành công suốt 30 giây ngọt ngào!</p>
-                </div>
-            """, unsafe_allow_html=True)
-            if st.button("💖 CHƠI LẠI NGAY 💖"):
-                st.session_state.game_started = False
-                st.rerun()
+function changeLane(targetLane) {
+  if (!isPlaying) {
+    resetGame();
+    return;
+  }
+  
+  currentLane = targetLane;
+  
+  // Kiểm tra va chạm ngay khi bấm
+  if (currentLane === obsLane) {
+    isPlaying = false;
+    document.getElementById("message.innerHTML = "💥 VA TRÚNG RỒI! Bấm nút để chơi lại";
+    document.getElementById("message").innerHTML = "💥 VA TRÚNG RỒI! Bấm nút chơi lại";
+  } else {
+    score++;
+    if (score >= 10) {
+      isPlaying = false;
+      document.getElementById("message").innerHTML = "🎉 CHIẾN THẮNG NGỌT NGÀO! 🎉";
+    } else {
+      obsLane = Math.floor(Math.random() * 3);
+      document.getElementById("message").innerHTML = "Đang né rất mượt!";
+    }
+  }
+  updateView();
+}
 
-        elif st.session_state.game_over:
-            st.markdown("""
-                <div style="background-color: #ffccd5; padding: 15px; border-radius: 15px; text-align: center; margin-top: 15px;">
-                    <h2 style="color: #ae2012;">💥 ÔI KHÔNG, VA TRÚNG RỒI! 💥</h2>
-                    <p style="color: #582f0e; font-weight: bold;">Đừng buồn, thử lại nha sư muội ơi!</p>
-                </div>
-            """, unsafe_allow_html=True)
-            if st.button("💖 CHƠI LẠI NÀO 💖"):
-                st.session_state.game_started = False
-                st.rerun()
+function resetGame() {
+  currentLane = 1;
+  obsLane = Math.floor(Math.random() * 3);
+  score = 0;
+  isPlaying = true;
+  document.getElementById("message").innerHTML = "Hãy bấm nút để né!";
+  updateView();
+}
+
+resetGame();
+</script>
+
+</body>
+</html>
+"""
+
+components.html(game_html, height=480)
+
+st.markdown("<p style='text-align: center; color: #780000; font-weight: bold;'>Bấm các nút Trái - Giữa - Phải ở bên dưới để điều khiển nhân vật Pudding nhé!</p>", unsafe_allow_html=True)
