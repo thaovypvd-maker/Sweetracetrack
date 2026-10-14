@@ -1,172 +1,164 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import random
+import time
 
-st.set_page_config(page_title="Đường Đua Ngọt Ngào - Sweet Racetrack", layout="centered")
+# 1. Cấu hình trang web
+st.set_page_config(page_title="Pudding Vượt Chướng Ngại Vật", page_icon="🍮", layout="centered")
 
+# 2. Nhúng CSS để làm giao diện đường đua màu Hồng & Nâu (Bánh bông lan)
 st.markdown("""
-    <style>
+<style>
+    /* Màu nền tổng thể */
     .stApp {
-        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #d4a373 100%);
-        color: #582f0e;
+        background-color: #FFF0F5; /* Màu hồng nhạt */
     }
-    h1 {
-        text-align: center;
-        color: #d90429;
-        font-family: 'Courier New', monospace;
-        text-shadow: 2px 2px #ffb3c6;
+    /* Khung đường đua */
+    .race-track {
+        background: linear-gradient(90deg, #D2691E 25%, #FFB6C1 25%, #FFB6C1 75%, #D2691E 75%);
+        /* Tạo 3 làn đường bằng background gradient */
+        background-size: 100% 100%;
+        border: 5px dashed #8B4513;
+        border-radius: 20px;
+        padding: 20px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
-    </style>
+    /* Từng làn đường */
+    .lane {
+        height: 80px;
+        border-bottom: 3px solid #8B4513;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        font-size: 30px;
+        position: relative;
+    }
+    .lane:last-child {
+        border-bottom: none;
+    }
+    /* Nhân vật Pudding */
+    .pudding {
+        font-size: 50px;
+        transition: all 0.5s ease;
+    }
+    /* Chướng ngại vật */
+    .obstacle {
+        font-size: 40px;
+    }
+    /* Nút bấm */
+    .stButton>button {
+        background-color: #FF69B4;
+        color: white;
+        border-radius: 20px;
+        font-size: 20px;
+        font-weight: bold;
+        width: 100%;
+        height: 60px;
+        border: 3px solid #C71585;
+    }
+</style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1>🍰 ĐƯỜNG ĐUA NGỌT NGÀO - SWEET RACETRACK 🍮</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-weight: bold; color: #780000;'>Game né chướng ngại vật bánh kem nông trại hồng cực mượt!</p>", unsafe_allow_html=True)
+# 3. Khởi tạo trạng thái game (Lưu vào bộ nhớ tạm)
+if 'distance' not in st.session_state:
+    st.session_state.distance = 0 # Vị trí hiện tại của Pudding (0 đến 100)
+if 'game_over' not in st.session_state:
+    st.session_state.game_over = False
+if 'obstacles' not in st.session_state:
+    # Tạo chướng ngại vật ngẫu nhiên trên 3 làn (Cách nhau 15-25 đơn vị)
+    st.session_state.obstacles = [
+        {"lane": 0, "pos": 30}, {"lane": 1, "pos": 50}, {"lane": 2, "pos": 70},
+        {"lane": 0, "pos": 85}, {"lane": 1, "pos": 95}
+    ]
+if 'current_lane' not in st.session_state:
+    st.session_state.current_lane = 1 # Bắt đầu ở làn giữa
 
-# Trò chơi dạng HTML trực quan chạy ngay trong khung web, bấm nút là nhân vật chạy né mượt mà
-game_html = """
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-  body {
-    background-color: #fff0f3;
-    text-align: center;
-    font-family: 'Courier New', monospace;
-    margin: 0;
-    padding: 10px;
-  }
-  .game-container {
-    background: #ffccd5;
-    border: 4px dashed #ff758c;
-    border-radius: 15px;
-    padding: 15px;
-    width: 280px;
-    margin: 0 auto;
-    box-shadow: 0 8px 16px rgba(255, 117, 140, 0.3);
-  }
-  .lane {
-    background: white;
-    margin: 8px 0;
-    padding: 10px;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #582f0e;
-  }
-  .active-lane {
-    background: #ffb3c6;
-    border: 2px solid #d90429;
-  }
-  button {
-    background-color: #ff758c;
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 15px;
-    border: none;
-    padding: 12px 18px;
-    margin: 5px;
-    cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  }
-  button:active {
-    background-color: #ff4d6d;
-    transform: scale(0.95);
-  }
-  #message {
-    font-size: 18px;
-    font-weight: bold;
-    margin-top: 10px;
-    color: #d90429;
-  }
-</style>
-</head>
-<body>
+# Hàm vẽ đường đua
+def draw_track():
+    # Tạo 3 làn, mỗi làn có Pudding và chướng ngại vật
+    track_html = '<div class="race-track">'
+    for i in range(3):
+        track_html += f'<div class="lane" style="justify-content: flex-start;">'
+        
+        # Vẽ chướng ngại vật trên làn này (nếu có)
+        for obs in st.session_state.obstacles:
+            if obs["lane"] == i:
+                # Tính toán vị trí phần trăm
+                left_pos = obs["pos"] * 0.8 # Chỉnh chút cho vừa khung
+                if obs["pos"] > st.session_state.distance:
+                    track_html += f'<span class="obstacle" style="position: absolute; left: {left_pos}%;">🌾</span>'
+        
+        # Vẽ Pudding nếu đang ở làn này
+        if i == st.session_state.current_lane:
+            # Tính vị trí Pudding
+            pud_pos = st.session_state.distance * 0.8
+            track_html += f'<span class="pudding" style="position: absolute; left: {pud_pos}%; transition: left 0.5s;">🍮</span>'
+            
+        track_html += '</div>'
+    track_html += '</div>'
+    st.markdown(track_html, unsafe_allow_html=True)
 
-<div class="game-container">
-  <div id="scoreText" style="font-weight: bold; color: #582f0e; margin-bottom: 10px;">Điểm né: 0 / 10</div>
-  
-  <div id="lane0" class="lane">Làn 1: 🌾 Nông Trại</div>
-  <div id="lane1" class="lane active-lane">Làn 2: 🍮 Pudding Kính Hồng</div>
-  <div id="lane2" class="lane">Làn 3: 🌾 Nông Trại</div>
+# 4. Giao diện chính
+st.title("🍮 Game Pudding Vượt Chướng Ngại Vật")
+st.write("Chào mừng bé đến với đường đua bánh bông lan! Hãy giúp Pudding về đích an toàn nhé.")
 
-  <div id="message">Hãy bấm nút để né!</div>
-</div>
+# Hiển thị thanh tiến độ
+st.progress(st.session_state.distance / 100)
+st.write(f"🏁 Quãng đường: **{st.session_state.distance}%**")
 
-<div style="margin-top: 15px;">
-  <button onclick="changeLane(0)">⬅️ Trái</button>
-  <button onclick="changeLane(1)">⏺️ Giữa</button>
-  <button onclick="changeLane(2)">Phải ➡️</button>
-</div>
+# Vẽ đường đua
+draw_track()
 
-<script>
-let currentLane = 1;
-let obsLane = 0;
-let score = 0;
-let isPlaying = true;
+# 5. Xử lý logic game
+col1, col2, col3 = st.columns(3)
 
-function updateView() {
-  for (let i = 0; i < 3; i++) {
-    let el = document.getElementById("lane" + i);
-    let text = "Làn " + (i + 1) + ": 🌾 Nông Trại";
-    if (i === obsLane) {
-      text = "Làn " + (i + 1) + ": ⚠️ Vật Cản";
-    }
-    if (i === currentLane) {
-      text = "Làn " + (i + 1) + ": 🍮 Pudding Kính Hồng";
-    }
-    el.innerHTML = text;
-    
-    if (i === currentLane) {
-      el.className = "lane active-lane";
-    } else {
-      el.className = "lane";
-    }
-  }
-  document.getElementById("scoreText").innerText = "Điểm né: " + score + " / 10";
-}
+with col1:
+    if st.button("⬅️ Sang trái", disabled=st.session_state.game_over):
+        if st.session_state.current_lane > 0:
+            st.session_state.current_lane -= 1
+            st.rerun()
 
-function changeLane(targetLane) {
-  if (!isPlaying) {
-    resetGame();
-    return;
-  }
-  
-  currentLane = targetLane;
-  
-  // Kiểm tra va chạm ngay khi bấm
-  if (currentLane === obsLane) {
-    isPlaying = false;
-    document.getElementById("message.innerHTML = "💥 VA TRÚNG RỒI! Bấm nút để chơi lại";
-    document.getElementById("message").innerHTML = "💥 VA TRÚNG RỒI! Bấm nút chơi lại";
-  } else {
-    score++;
-    if (score >= 10) {
-      isPlaying = false;
-      document.getElementById("message").innerHTML = "🎉 CHIẾN THẮNG NGỌT NGÀO! 🎉";
-    } else {
-      obsLane = Math.floor(Math.random() * 3);
-      document.getElementById("message").innerHTML = "Đang né rất mượt!";
-    }
-  }
-  updateView();
-}
+with col2:
+    if st.button("🚀 CHẠY", disabled=st.session_state.game_over):
+        # Tăng khoảng cách
+        st.session_state.distance += 15
+        if st.session_state.distance >= 100:
+            st.session_state.distance = 100
+            st.success("🎉 CHÚC MỪNG! PUDDING ĐÃ VỀ ĐÍCH! 🎉")
+            st.balloons()
+            st.session_state.game_over = True
+            st.rerun()
+        
+        # Kiểm tra va chạm
+        for obs in st.session_state.obstacles:
+            # Nếu cùng làn và khoảng cách chạm nhau (sai số 10 đơn vị)
+            if obs["lane"] == st.session_state.current_lane and abs(obs["pos"] - st.session_state.distance) < 10:
+                st.session_state.game_over = True
+                st.error("💥 ÔI KHÔNG, VA TRÚNG RỒI! 💥")
+                st.write("Đừng buồn, thử lại nha sư muội ơi!")
+                st.rerun()
+        st.rerun()
 
-function resetGame() {
-  currentLane = 1;
-  obsLane = Math.floor(Math.random() * 3);
-  score = 0;
-  isPlaying = true;
-  document.getElementById("message").innerHTML = "Hãy bấm nút để né!";
-  updateView();
-}
+with col3:
+    if st.button("➡️ Sang phải", disabled=st.session_state.game_over):
+        if st.session_state.current_lane < 2:
+            st.session_state.current_lane += 1
+            st.rerun()
 
-resetGame();
-</script>
-
-</body>
-</html>
-"""
-
-components.html(game_html, height=480)
-
-st.markdown("<p style='text-align: center; color: #780000; font-weight: bold;'>Bấm các nút Trái - Giữa - Phải ở bên dưới để điều khiển nhân vật Pudding nhé!</p>", unsafe_allow_html=True)
+# Nút chơi lại
+if st.session_state.game_over:
+    if st.button("💖 CHƠI LẠI NÀO 💖"):
+        st.session_state.distance = 0
+        st.session_state.game_over = False
+        st.session_state.current_lane = 1
+        # Random lại chướng ngại vật
+        st.session_state.obstacles = [
+            {"lane": random.randint(0,2), "pos": random.randint(20,40)},
+            {"lane": random.randint(0,2), "pos": random.randint(50,70)},
+            {"lane": random.randint(0,2), "pos": random.randint(80,95)}
+        ]
+        st.rerun()
