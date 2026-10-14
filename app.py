@@ -1,7 +1,8 @@
 import streamlit as st
 import time
+import random
 
-st.set_page_config(page_title="Đường Đua Ngọt Ngào - Sweet Racetrack", page_kwargs={"layout": "centered"})
+st.set_page_config(page_title="Đường Đua Ngọt Ngào - Sweet Racetrack", layout="centered")
 
 # CSS tùy chỉnh giao diện ngọt ngào, màu hồng và nâu bánh kem
 st.markdown("""
@@ -78,7 +79,6 @@ with col2:
                 st.session_state.won = True
             else:
                 # Ngẫu nhiên xuất hiện chướng ngại vật ở một làn đường
-                import random
                 obs_lane = random.choice([0, 1, 2])
                 if obs_lane == st.session_state.pudding_lane:
                     st.session_state.game_over = True
