@@ -1,164 +1,88 @@
+```python
 import streamlit as st
-import random
-import time
+import streamlit.components.v1 as components
 
-# 1. Cấu hình trang web
-st.set_page_config(page_title="Pudding Vượt Chướng Ngại Vật", page_icon="🍮", layout="centered")
+st.set_page_config(page_title="Pudding Race", layout="centered")
 
-# 2. Nhúng CSS để làm giao diện đường đua màu Hồng & Nâu (Bánh bông lan)
-st.markdown("""
+game_html = """
+<!DOCTYPE html>
+<html>
+<head>
 <style>
-    /* Màu nền tổng thể */
-    .stApp {
-        background-color: #FFF0F5; /* Màu hồng nhạt */
-    }
-    /* Khung đường đua */
-    .race-track {
-        background: linear-gradient(90deg, #D2691E 25%, #FFB6C1 25%, #FFB6C1 75%, #D2691E 75%);
-        /* Tạo 3 làn đường bằng background gradient */
-        background-size: 100% 100%;
-        border: 5px dashed #8B4513;
-        border-radius: 20px;
-        padding: 20px;
-        margin-bottom: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
-    /* Từng làn đường */
-    .lane {
-        height: 80px;
-        border-bottom: 3px solid #8B4513;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 20px;
-        font-size: 30px;
-        position: relative;
-    }
-    .lane:last-child {
-        border-bottom: none;
-    }
-    /* Nhân vật Pudding */
-    .pudding {
-        font-size: 50px;
-        transition: all 0.5s ease;
-    }
-    /* Chướng ngại vật */
-    .obstacle {
-        font-size: 40px;
-    }
-    /* Nút bấm */
-    .stButton>button {
-        background-color: #FF69B4;
-        color: white;
-        border-radius: 20px;
-        font-size: 20px;
-        font-weight: bold;
-        width: 100%;
-        height: 60px;
-        border: 3px solid #C71585;
-    }
+    body { margin: 0; display: flex; justify-content: center; background: #FFF0F5; font-family: 'Courier New', monospace; }
+    #game { position: relative; width: 100%; max-width: 500px; height: 600px; overflow: hidden; border: 8px solid #FF69B4; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+    .bg { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+    #pudding { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: url('pudding.png') no-repeat center/contain; z-index: 10; transition: bottom 0.15s; }
+    .obs { position: absolute; width: 50px; height: 50px; background: url('obstacle.png') no-repeat center/contain; z-index: 5; }
+    #ui { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; color: #FF69B4; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 0 #FFF, -2px -2px 0 #FFF; z-index: 20; }
+    .ctrl { position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 30; }
+    button { padding: 10px 20px; font-size: 20px; background: #FF69B4; color: white; border: 3px solid #C71585; border-radius: 10px; font-weight: bold; cursor: pointer; }
+    #start { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; padding: 20px 40px; z-index: 100; }
+    .over { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: #FF0000; font-size: 40px; font-weight: bold; text-align: center; text-shadow: 2px 2px 0 #FFF; z-index: 50; display: none; }
 </style>
-""", unsafe_allow_html=True)
+</head>
+<body>
+<div id="game">
+    <img src="background.png" class="bg">
+    <div id="pudding"></div>
+    <div id="ui"><div>SCORE: <span id="score">0000</span></div><div>TIME: <span id="time">00:30</span></div></div>
+    <div class="over" id="msg">💥 ÔI KHÔNG, VA TRÚNG RỒI! 💥</div>
+    <div class="ctrl"><button id="left">⬅️ TRÁI</button><button id="right">➡️ PHẢI</button></div>
+    <button id="start">🚀 BẮT ĐẦU CHẠY</button>
+</div>
+<script>
+    const g = document.getElementById('game'), p = document.getElementById('pudding'), s = document.getElementById('score'), t = document.getElementById('time'), st = document.getElementById('start'), m = document.getElementById('msg');
+    let play = false, sc = 0, time = 30, lane = 1, obs = [], loop;
+    const pos = [10, 70, 130];
+    
+    function move(d) {
+        if (!play) return;
+        if (d === 'l' && lane > 0) lane--;
+        if (d === 'r' && lane < 2) lane++;
+        p.style.bottom = pos[lane] + 'px';
+    }
+    
+    function spawn() {
+        if (!play) return;
+        const o = document.createElement('div'); o.className = 'obs';
+        const r = Math.floor(Math.random() * 3);
+        o.style.bottom = pos[r] + 'px'; o.style.right = '-60px'; o.dataset.lane = r;
+        g.appendChild(o); obs.push(o);
+    }
+    
+    function update() {
+        if (!play) return;
+        obs.forEach((o, i) => {
+            let cr = parseFloat(o.style.right) + 5;
+            o.style.right = cr + 'px';
+            if (cr > 180 && cr < 260 && parseInt(o.dataset.lane) === lane) {
+                play = false; clearInterval(loop); m.style.display = 'block'; st.innerText = 'CHƠI LẠI 💖'; st.style.display = 'block';
+            }
+            if (cr > 550) { o.remove(); obs.splice(i, 1); sc += 10; s.innerText = String(sc).padStart(4, '0'); }
+        });
+        if (Math.random() < 0.03) spawn();
+        requestAnimationFrame(update);
+    }
+    
+    function start() {
+        play = true; sc = 0; time = 30; lane = 1; obs.forEach(o => o.remove()); obs = [];
+        s.innerText = '0000'; t.innerText = '00:30'; m.style.display = 'none'; st.style.display = 'none'; p.style.bottom = '70px';
+        const timer = setInterval(() => {
+            if (!play) { clearInterval(timer); return; }
+            time--; t.innerText = '00:' + String(time).padStart(2, '0');
+            if (time <= 0) { play = false; clearInterval(timer); m.innerText = '🎉 CHÚC MỪNG! VỀ ĐÍCH! 🎉'; m.style.color = '#00FF00'; m.style.display = 'block'; st.innerText = 'CHƠI LẠI 💖'; st.style.display = 'block'; }
+        }, 1000);
+        loop = requestAnimationFrame(update);
+    }
+    
+    st.addEventListener('click', start);
+    document.getElementById('left').addEventListener('click', () => move('l'));
+    document.getElementById('right').addEventListener('click', () => move('r'));
+    document.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') move('l'); if (e.key === 'ArrowRight') move('r'); });
+</script>
+</body>
+</html>
+"""
 
-# 3. Khởi tạo trạng thái game (Lưu vào bộ nhớ tạm)
-if 'distance' not in st.session_state:
-    st.session_state.distance = 0 # Vị trí hiện tại của Pudding (0 đến 100)
-if 'game_over' not in st.session_state:
-    st.session_state.game_over = False
-if 'obstacles' not in st.session_state:
-    # Tạo chướng ngại vật ngẫu nhiên trên 3 làn (Cách nhau 15-25 đơn vị)
-    st.session_state.obstacles = [
-        {"lane": 0, "pos": 30}, {"lane": 1, "pos": 50}, {"lane": 2, "pos": 70},
-        {"lane": 0, "pos": 85}, {"lane": 1, "pos": 95}
-    ]
-if 'current_lane' not in st.session_state:
-    st.session_state.current_lane = 1 # Bắt đầu ở làn giữa
-
-# Hàm vẽ đường đua
-def draw_track():
-    # Tạo 3 làn, mỗi làn có Pudding và chướng ngại vật
-    track_html = '<div class="race-track">'
-    for i in range(3):
-        track_html += f'<div class="lane" style="justify-content: flex-start;">'
-        
-        # Vẽ chướng ngại vật trên làn này (nếu có)
-        for obs in st.session_state.obstacles:
-            if obs["lane"] == i:
-                # Tính toán vị trí phần trăm
-                left_pos = obs["pos"] * 0.8 # Chỉnh chút cho vừa khung
-                if obs["pos"] > st.session_state.distance:
-                    track_html += f'<span class="obstacle" style="position: absolute; left: {left_pos}%;">🌾</span>'
-        
-        # Vẽ Pudding nếu đang ở làn này
-        if i == st.session_state.current_lane:
-            # Tính vị trí Pudding
-            pud_pos = st.session_state.distance * 0.8
-            track_html += f'<span class="pudding" style="position: absolute; left: {pud_pos}%; transition: left 0.5s;">🍮</span>'
-            
-        track_html += '</div>'
-    track_html += '</div>'
-    st.markdown(track_html, unsafe_allow_html=True)
-
-# 4. Giao diện chính
-st.title("🍮 Game Pudding Vượt Chướng Ngại Vật")
-st.write("Chào mừng bé đến với đường đua bánh bông lan! Hãy giúp Pudding về đích an toàn nhé.")
-
-# Hiển thị thanh tiến độ
-st.progress(st.session_state.distance / 100)
-st.write(f"🏁 Quãng đường: **{st.session_state.distance}%**")
-
-# Vẽ đường đua
-draw_track()
-
-# 5. Xử lý logic game
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("⬅️ Sang trái", disabled=st.session_state.game_over):
-        if st.session_state.current_lane > 0:
-            st.session_state.current_lane -= 1
-            st.rerun()
-
-with col2:
-    if st.button("🚀 CHẠY", disabled=st.session_state.game_over):
-        # Tăng khoảng cách
-        st.session_state.distance += 15
-        if st.session_state.distance >= 100:
-            st.session_state.distance = 100
-            st.success("🎉 CHÚC MỪNG! PUDDING ĐÃ VỀ ĐÍCH! 🎉")
-            st.balloons()
-            st.session_state.game_over = True
-            st.rerun()
-        
-        # Kiểm tra va chạm
-        for obs in st.session_state.obstacles:
-            # Nếu cùng làn và khoảng cách chạm nhau (sai số 10 đơn vị)
-            if obs["lane"] == st.session_state.current_lane and abs(obs["pos"] - st.session_state.distance) < 10:
-                st.session_state.game_over = True
-                st.error("💥 ÔI KHÔNG, VA TRÚNG RỒI! 💥")
-                st.write("Đừng buồn, thử lại nha sư muội ơi!")
-                st.rerun()
-        st.rerun()
-
-with col3:
-    if st.button("➡️ Sang phải", disabled=st.session_state.game_over):
-        if st.session_state.current_lane < 2:
-            st.session_state.current_lane += 1
-            st.rerun()
-
-# Nút chơi lại
-if st.session_state.game_over:
-    if st.button("💖 CHƠI LẠI NÀO 💖"):
-        st.session_state.distance = 0
-        st.session_state.game_over = False
-        st.session_state.current_lane = 1
-        # Random lại chướng ngại vật
-        st.session_state.obstacles = [
-            {"lane": random.randint(0,2), "pos": random.randint(20,40)},
-            {"lane": random.randint(0,2), "pos": random.randint(50,70)},
-            {"lane": random.randint(0,2), "pos": random.randint(80,95)}
-        ]
-        st.rerun()
+components.html(game_html, height=620)
+```
