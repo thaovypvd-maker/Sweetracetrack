@@ -30,13 +30,14 @@ game_html = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sweet Racetrack</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        /* Sử dụng font VT323 hỗ trợ tiếng Việt có dấu, kiểu pixel retro */
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
 
         body {
             margin: 0;
             padding: 0;
             background-color: #ffe6f0; /* Nền hồng nhạt */
-            font-family: 'Press Start 2P', cursive;
+            font-family: 'VT323', monospace;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -70,7 +71,7 @@ game_html = """
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255, 230, 240, 0.85);
+            background: rgba(255, 230, 240, 0.9);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -81,17 +82,17 @@ game_html = """
 
         h1 {
             color: #ff3399;
-            font-size: 24px;
+            font-size: 42px; /* Tăng size do font VT323 nhỏ hơn */
             text-shadow: 2px 2px 0 #fff;
             margin-bottom: 20px;
-            line-height: 1.5;
+            line-height: 1.2;
         }
 
         p {
             color: #cc0066;
-            font-size: 12px;
+            font-size: 24px; /* Tăng size */
             margin-bottom: 30px;
-            line-height: 1.8;
+            line-height: 1.4;
         }
 
         .btn {
@@ -99,8 +100,8 @@ game_html = """
             color: white;
             border: 3px solid #cc0066;
             padding: 15px 30px;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 14px;
+            font-family: 'VT323', monospace;
+            font-size: 28px; /* Tăng size */
             border-radius: 8px;
             cursor: pointer;
             box-shadow: 0 5px 0 #cc0066;
@@ -131,7 +132,7 @@ game_html = """
             border: 3px solid #ff3399;
             border-radius: 50%;
             color: white;
-            font-size: 24px;
+            font-size: 30px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -151,7 +152,7 @@ game_html = """
             position: absolute;
             top: 20px;
             right: 20px;
-            font-size: 20px;
+            font-size: 36px; /* Tăng size */
             color: #ff3399;
             text-shadow: 2px 2px 0 #fff;
             z-index: 5;
@@ -199,14 +200,20 @@ game_html = """
     let lastTime = 0;
     let spawnTimer = 0;
     
+    // Kích thước nhân vật và chướng ngại vật (ĐÃ TĂNG KÍCH THƯỚC)
+    let playerSize = 80; 
+    let obsWidth = 70;
+    let obsHeight = 70;
+
     // Cấu hình làn đường (3 làn)
-    // Tọa độ Y của 3 làn đường (ước lượng dựa trên nền 600px)
-    const lanes = [380, 460, 540]; 
+    // Tọa độ Y của TÂM 3 làn đường dựa trên nền 600px
+    const laneCenters = [375, 460, 550]; 
     let currentLane = 1; // Bắt đầu ở làn giữa
-    let playerY = lanes[currentLane];
-    let targetY = lanes[currentLane];
-    let playerX = 60;
-    let playerSize = 60;
+    
+    // Tính toán tọa độ top-left (góc trên bên trái) để vẽ
+    let playerY = laneCenters[currentLane] - playerSize / 2;
+    let targetY = laneCenters[currentLane] - playerSize / 2;
+    let playerX = 50; // Lùi vào một chút để không sát lề
 
     // Mảng chướng ngại vật
     let obstacles = [];
@@ -229,14 +236,14 @@ game_html = """
     function moveUp() {
         if (currentLane > 0) {
             currentLane--;
-            targetY = lanes[currentLane];
+            targetY = laneCenters[currentLane] - playerSize / 2;
         }
     }
 
     function moveDown() {
         if (currentLane < 2) {
             currentLane++;
-            targetY = lanes[currentLane];
+            targetY = laneCenters[currentLane] - playerSize / 2;
         }
     }
 
@@ -247,8 +254,8 @@ game_html = """
         gameState = 'PLAYING';
         timeLeft = 30;
         currentLane = 1;
-        playerY = lanes[currentLane];
-        targetY = lanes[currentLane];
+        playerY = laneCenters[currentLane] - playerSize / 2;
+        targetY = laneCenters[currentLane] - playerSize / 2;
         obstacles = [];
         spawnTimer = 0;
         gameSpeed = 350;
@@ -282,12 +289,13 @@ game_html = """
 
     function spawnObstacle() {
         const laneIndex = Math.floor(Math.random() * 3);
-        const yPos = lanes[laneIndex] - 10; // Điều chỉnh để khớp với làn
+        // Tính toán tọa độ top-left dựa trên tâm làn đường
+        const yPos = laneCenters[laneIndex] - obsHeight / 2;
         obstacles.push({
             x: 400, // Bắt đầu từ bên phải màn hình
             y: yPos,
-            width: 50,
-            height: 50,
+            width: obsWidth,
+            height: obsHeight,
             lane: laneIndex
         });
     }
@@ -327,8 +335,8 @@ game_html = """
             }
 
             // Kiểm tra va chạm (Collision Detection)
-            // Thu nhỏ hitbox một chút để chơi dễ chịu hơn
-            const padding = 10;
+            // Đã điều chỉnh padding (khoảng đệm) cho hitbox vừa vặn hơn với hình to
+            const padding = 15;
             if (
                 playerX + padding < obs.x + obs.width - padding &&
                 playerX + playerSize - padding > obs.x + padding &&
