@@ -43,15 +43,62 @@ game_html = """
             position: relative; width: 100%; max-width: 400px; height: 600px;
             box-shadow: 0 10px 30px rgba(255, 105, 180, 0.5);
             border-radius: 15px; overflow: hidden; border: 4px solid #ff99cc;
+            background-color: #d2a679;
         }
 
-        canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+        #gameCanvas { 
+            position: absolute; top: 0; left: 0; 
+            width: 100%; height: 100%; image-rendering: pixelated; 
+            z-index: 1;
+        }
+
+        #entity-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 2; pointer-events: none;
+        }
+
+        #player {
+            position: absolute;
+            width: 150px; height: 150px;
+            left: 25px;
+            transition: top 0.1s ease-out;
+            image-rendering: pixelated;
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 80px; height: 80px;
+            image-rendering: pixelated;
+        }
+
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none;
+        }
+
+        #timer {
+            position: absolute; top: 20px; right: 20px; font-size.style: 40px;
+            color: #ff3399; text-shadow: 2px 2px 0 #fff; display: none;
+        }
+
+        #controls {
+            position: absolute; bottom: 20px; right: 20px;
+            display: flex; flex-direction: column; gap: 15px;
+            pointer-events: auto;
+        }
+        .control-btn {
+            width: 80px; height: 80px; background-color: rgba(255, 153, 204, 0.9);
+            border: 4px solid #ff3399; border-radius: 50%; color: white; font-size: 36px;
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+           .display user-select: none; -webkit-user-select: none; box =-shadow: 0 5px 0 #cc0066 ';
+        }
+        .control-btn:active { transform: translateblockY(5px); box-shadow: 0 ';0 0 #cc0066; background-color: #ff66b3; }
 
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(255, 230, 240, 0.95);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            text-align: center; z-index: 10;
+            text-align: center; pointer-events: auto;
         }
 
         h1 { color: #ff3399; font-size: 46px; text-shadow: 2px 2px 0 #fff; margin-bottom: 20px; line-height: 1.1; }
@@ -65,26 +112,8 @@ game_html = """
         }
         .btn:active { transform: translateY(5px); box-shadow: 0 0 0 #cc0066; }
 
-        #controls {
-            position: absolute; bottom: 20px; right: 20px;
-            display: flex; flex-direction: column; gap: 15px; z-index: 5;
-        }
-        .control-btn {
-            width: 80px; height: 80px; background-color: rgba(255, 153, 204, 0.9);
-            border: 4px solid #ff3399; border-radius: 50%; color: white; font-size: 36px;
-            display: flex; justify-content: center; align-items: center; cursor: pointer;
-            user-select: none; -webkit-user-select: none; box-shadow: 0 5px 0 #cc0066;
-        }
-        .control-btn:active { transform: translateY(5px); box-shadow: 0 0 0 #cc0066; background-color: #ff66b3; }
-
-        #timer {
-            position: absolute; top: 20px; right: 20px; font-size: 40px;
-            color: #ff3399; text-shadow: 2px 2px 0 #fff; z-index: 5;
-        }
-
-        #loading-msg {
-            position: absolute; bottom: 20px; left: 20px;
-            font-size: 24px; color: #cc0066; z-index: 5; display: none;
+        #error-msg {
+            position: absolute; top: 10px; left: 10px; color: red; font-size: 20px; display: none; z-index: 20;
         }
     </style>
 </head>
@@ -92,16 +121,23 @@ game_html = """
 
 <div id="game-container">
     <canvas id="gameCanvas" width="400" height="600"></canvas>
-    <div id="timer">30s</div>
-    <div id="loading-msg">Đang tải hình ảnh...</div>
-    <div id="controls">
-        <div class="control-btn" id="btnUp">▲</div>
-        <div class="control-btn" id="btnDown">▼</div>
+    
+    <div id="entity-layer">
+        <img id="player" src="" alt="Pudding">
     </div>
-    <div id="overlay">
-        <h1>SWEET<br>RACETRACK</h1>
-        <p>Dùng nút ▲ ▼ để né Cherry.<br>Sống sót 30s để chiến thắng!</p>
-        <button class="btn" id="startBtn">Bắt đầu</button>
+
+    <div id="ui-layer">
+        <div id="error-msg">LỖI: Không tải được ảnh!</div>
+        <div id="timer">30s</div>
+        <div id="controls">
+            <div class="control-btn" id="btnUp">▲</div>
+            <div class="control-btn" id="btnDown">▼</div>
+        </div>
+        <div id="overlay">
+            <h1>SWEET<br>RACETRACK</h1>
+            <p>Dùng nút ▲ ▼ để né Cherry.<br>Sống sót 30s để chiến thắng!</p>
+            <button class="btn" id="startBtn">Bắt đầu</button>
+        </div>
     </div>
 </div>
 
@@ -110,65 +146,44 @@ game_html = """
     const ctx = canvas.getContext('2d');
     const overlay = document.getElementById('overlay');
     const timerDisplay = document.getElementById('timer');
-    const loadingMsg = document.getElementById('loading-msg');
-    
-    // TẢI HÌNH ẢNH (ĐÃ XÓA crossOrigin ĐỂ KHÔNG BỊ CHẶN TRÊN ĐIỆN THOẠI)
-    const playerImg = new Image();
-    playerImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/Pudding.png.PNG";
+    const playerElement = document.getElementById('player');
+    const entityLayer = document.getElementById('entity-layer');
+    const errorMsg = document.getElementById('error-msg');
 
-    const obsImg = new Image();
-    obsImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/obstacle.png.PNG";
+    // Link ảnh
+    const playerUrl = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/Pudding.png.PNG";
+    const obsUrl = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/obstacle.png.PNG";
 
-    let isPlayerLoaded = false;
-    let isObsLoaded = false;
+    playerElement.src = playerUrl;
+    playerElement.onerror = () => { errorMsg.style.display = 'block'; errorMsg.innerText = "LỖI: Không tải được ảnh Pudding!"; };
+    playerElement.onload = () => { playerElement };
 
-    playerImg.onload = () => { isPlayerLoaded = true; checkLoading(); };
-    obsImg.onload = () => { isObsLoaded = true; checkLoading(); };
-
-    // Hiển thị thông báo nếu ảnh tải chậm
-    setTimeout(() => {
-        if (!isPlayerLoaded || !isObsLoaded) {
-            loadingMsg.style.display = 'block';
-        }
-    }, 1000);
-
-    function checkLoading() {
-        if (isPlayerLoaded && isObsLoaded) {
-            loadingMsg.style.display = 'none';
-        }
-    }
-
-    // Biến trạng thái
     let gameState = 'START'; 
     let timeLeft = 30;
     let spawnTimer = 0;
     
-    // Kích thước
     let playerSize = 150; 
-    let obsWidth = 80;
-    let obsHeight = 80;
+    let obsSize = 80;
 
-    // TỌA ĐỘ TÂM LÀN ĐƯỜNG
+    // TÂM CỦA 3 LÀN ĐƯỜNG
     const laneCenters = [283, 410, 536]; 
     let currentLane = 1; 
     
     let playerY = laneCenters[currentLane] - playerSize / 2;
-    let targetY = laneCenters[currentLane] - playerSize / 2;
-    let playerX = 25; 
+    playerElement.style.top = playerY + "px";
 
     let obstacles = [];
     let gameSpeed = 350; 
 
     // ==========================================
-    // VẼ BACKGROUND PIXEL ART
+    // VẼ BACKGROUND BÁNH KEM PIXEL ART (MỚI)
     // ==========================================
     function drawBackground() {
-        // Bầu trời
+        // 1. BẦU TRỜI & MÂY & NÚI (Giữ nguyên)
         ctx.fillStyle = '#80d4ff'; ctx.fillRect(0, 0, 400, 60);
         ctx.fillStyle = '#99ddff'; ctx.fillRect(0, 60, 400, 60);
         ctx.fillStyle = '#b3e6ff'; ctx.fillRect(0, 120, 400, 100);
 
-        // Mặt trời
         ctx.fillStyle = '#ffcce0'; ctx.fillRect(270, 50, 80, 80);
         ctx.fillStyle = '#ffb3d9'; ctx.fillRect(280, 60, 60, 60);
         ctx.fillStyle = '#ffd9ec'; ctx.fillRect(285, 65, 20, 20);
@@ -176,7 +191,6 @@ game_html = """
         ctx.fillRect(260, 80, 10, 20); ctx.fillRect(350, 80, 10, 20);
         ctx.fillRect(300, 40, 20, 10); ctx.fillRect(300, 130, 20, 10);
 
-        // Mây
         ctx.fillStyle = '#ffd1ec';
         ctx.fillRect(30, 100, 140, 20); ctx.fillRect(50, 80, 100, 20); ctx.fillRect(70, 60, 60, 20);
         ctx.fillStyle = '#ffffff';
@@ -186,7 +200,6 @@ game_html = """
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(290, 100, 70, 15); ctx.fillRect(310, 85, 30, 15);
 
-        // Núi
         ctx.fillStyle = '#f4c2c2';
         ctx.beginPath(); ctx.moveTo(-50, 220); ctx.lineTo(80, 100); ctx.lineTo(210, 220); ctx.fill();
         ctx.fillStyle = '#ffd9d9';
@@ -198,37 +211,103 @@ game_html = """
         ctx.fillStyle = '#f4c2c2';
         ctx.beginPath(); ctx.moveTo(300, 220); ctx.lineTo(400, 110); ctx.lineTo(500, 220); ctx.fill();
 
-        // Mặt đường
-        ctx.fillStyle = '#d2a679'; 
-        ctx.fillRect(0, 220, 400, 380);
+        // 2. VẼ ĐƯỜNG ĐUA BÁNH KEM (3 TẦNG)
+        // Tầng 1: Kem Vani (Màu vàng nhạt)
+        ctx.fillStyle = '#fff5e6'; 
+        ctx.fillRect(0, 220, 400, 126);
+        // Highlight Tầng 1
+        ctx.fillStyle = '#ffffff'; 
+        ctx.fillRect(0, 220, 400, 10);
 
-        // Texture đường
-        ctx.fillStyle = '#c1956a';
-        ctx.fillRect(20, 250, 15, 5); ctx.fillRect(180, 300, 20, 5); ctx.fillRect(320, 270, 10, 5);
-        ctx.fillRect(80, 400, 25, 5); ctx.fillRect(250, 480, 15, 5); ctx.fillRect(150, 550, 20, 5);
-        ctx.fillStyle = '#e0b88c';
-        ctx.fillRect(50, 280, 10, 5); ctx.fillRect(220, 330, 15, 5); ctx.fillRect(350, 380, 20, 5);
-        ctx.fillRect(120, 450, 10, 5); ctx.fillRect(300, 520, 15, 5); ctx.fillRect(70, 580, 25, 5);
+        // Tầng 2: Kem Dâu (Màu hồng nhạt)
+        ctx.fillStyle = '#ffe6f0'; 
+        ctx.fillRect(0, 346, 400, 127);
+        // Highlight Tầng 2
+        ctx.fillStyle = '#fff0f5'; 
+        ctx.fillRect(0, 346, 400, 10);
 
-        // Vạch kẻ đường
-        for (let i = 0; i < 400; i += 40) {
-            ctx.fillStyle = '#cc0066'; ctx.fillRect(i, 348, 20, 8);
-            ctx.fillStyle = '#ff99cc'; ctx.fillRect(i, 346, 20, 8);
-            ctx.fillStyle = '#ffd1ec'; ctx.fillRect(i, 346, 20, 2);
+        // Tầng 3: Kem Socola (Màu nâu sữa)
+        ctx.fillStyle = '#e6c280'; 
+        ctx.fillRect(0, 473, 400, 127);
+        // Highlight Tầng 3
+        ctx.fillStyle = '#f2d9a6'; 
+        ctx.fillRect(0, 473, 400, 10);
+
+        // 3. VẼ SỐT CHẢY (FROSTING DRIPS) Ở CÁC VẠCH PHÂN CÁCH
+        // Sốt Dâu (Vạch giữa làn 1 & 2)
+        ctx.fillStyle = '#ff66b3'; // Màu sốt đậm
+        ctx.fillRect(0, 340, 400, 15); // Dải sốt chính
+        for (let i = 0; i < 400; i += 30) {
+            ctx.fillRect(i + 5, 355, 10, 15); // Giọt sốt nhỏ xuống
+            ctx.fillRect(i + 15, 355, 5, 8);   // Giọt sốt ngắn hơn
         }
-        for (let i = 0; i < 400; i += 40) {
-            ctx.fillStyle = '#cc0066'; ctx.fillRect(i, 475, 20, 8);
-            ctx.fillStyle = '#ff99cc'; ctx.fillRect(i, 473, 20, 8);
-            ctx.fillStyle = '#ffd1ec'; ctx.fillRect(i, 473, 20, 2);
+        // Highlight cho sốt dâu
+        ctx.fillStyle = '#ff99cc'; 
+        ctx.fillRect(0, 340, 400, 4);
+
+        // Sốt Socola (Vạch giữa làn 2 & 3)
+        ctx.fillStyle = '#8c5a3c'; // Màu socola đậm
+        ctx.fillRect(0, 467, 400, 15); // Dải sốt chính
+        for (let i = 0; i < 400; i += 25) {
+            ctx.fillRect(i + 10, 482, 12, 18); // Giọt socola dài
+            ctx.fillRect(i + 2, 482, 6, 10);   // Giọt socola ngắn
         }
-        ctx.fillStyle = '#cc0066'; ctx.fillRect(0, 221, 400, 6);
-        ctx.fillStyle = '#ff99cc'; ctx.fillRect(0, 220, 400, 6);
-        ctx.fillStyle = '#ffd1ec'; ctx.fillRect(0, 220, 400, 2);
+        // Highlight cho socola
+        ctx.fillStyle = '#b3804d'; 
+        ctx.fillRect(0, 467, 400, 4);
+
+        // Viền trên cùng của đường đua (Sốt dâu)
+        ctx.fillStyle = '#ff66b3'; ctx.fillRect(0, 220, 400, 6);
+        ctx.fillStyle = '#ff99cc'; ctx.fillRect(0, 220, 400, 2);
+
+        // 4. THÊM HẠT CỐM (SPRINKLES) VÀ BÁNH VỤN (CRUMBS)
+        const sprinkles = [
+            {x: 30, y: 250, c: '#ff3399'}, {x: 150, y: 280, c: '#33ccff'}, {x: 280, y: 240, c: '#ffff33'},
+            {x: 80, y: 320, c: '#ff3399'}, {x: 220, y: 300, c: '#33ccff'}, {x: 350, y: 330, c: '#ffff33'},
+            {x: 50, y: 380, c: '#ffff33'}, {x: 180, y: 400, c: '#ff3399'}, {x: 300, y: 420, c: '#33ccff'},
+            {x: 120, y: 430, c: '#33ccff'}, {x: 250, y: 390, c: '#ffff33'}, {x: 370, y: 440, c: '#ff3399'},
+            {x: 40, y: 500, c: '#33ccff'}, {x: 160, y: 520, c: '#ffff33'}, {x: 290, y: 510, c: '#ff3399'},
+            {x: 90, y: 550, c: '#ff3399'}, {x: 210, y: 570, c: '#33ccff'}, {x: 330, y: 560, c: '#ffff33'},
+            {x: 60, y: 580, c: '#ffff33'}, {x: 140, y: 480, c: '#ff3399'}, {x: 320, y: 540, c: '#33ccff'}
+        ];
+        
+        sprinkles.forEach(s => {
+            ctx.fillStyle = s.c;
+            ctx.fillRect(s.x, s.y, 6, 3); // Hạt cốm hình chữ nhật
+            // Thêm một chút bóng đổ cho hạt cốm
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(s.x, s.y+3, 6, 1);
+        });
+
+        // Thêm các đốm bánh vụn (màu nâu nhạt) rải rác
+        ctx.fillStyle = '#d9b38c';
+        ctx.fillRect(100, 260, 10, 5); ctx.fillRect(240, 310, 15, 5); ctx.fillRect(340, 280, 8, 5);
+        ctx.fillRect(60, 410, 12, 5); ctx.fillRect(190, 450, 10, 5); ctx.fillRect(310, 490, 15, 5);
+        ctx.fillRect(130, 540, 8, 5); ctx.fillRect(270, 580, 12, 5);
     }
 
-    // Xử lý sự kiện
-    window.addEventListener('keydown', (e) => {
+    // ==========================================
+    // LOGIC GAME
+    // ==========================================
+    function moveUp() {
         if (gameState !== 'PLAYING') return;
+        if (currentLane > 0) {
+            currentLane--;
+            playerY = laneCenters[currentLane] - playerSize / 2;
+            playerElement.style.top = playerY + "px";
+        }
+    }
+
+    function moveDown() {
+        if (gameState !== 'PLAYING') return;
+        if (currentLane < 2) {
+            currentLane++;
+            playerY = laneCenters[currentLane] - playerSize / 2;
+            playerElement.style.top = playerY + "px";
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') moveUp();
         if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') moveDown();
     });
@@ -238,20 +317,6 @@ game_html = """
     document.getElementById('btnDown').addEventListener('touchstart', (e) => { e.preventDefault(); moveDown(); });
     document.getElementById('btnDown').addEventListener('mousedown', moveDown);
 
-    function moveUp() {
-        if (currentLane > 0) {
-            currentLane--;
-            targetY = laneCenters[currentLane] - playerSize / 2;
-        }
-    }
-
-    function moveDown() {
-        if (currentLane < 2) {
-            currentLane++;
-            targetY = laneCenters[currentLane] - playerSize / 2;
-        }
-    }
-
     document.getElementById('startBtn').addEventListener('click', startGame);
 
     function startGame() {
@@ -259,12 +324,16 @@ game_html = """
         timeLeft = 30;
         currentLane = 1;
         playerY = laneCenters[currentLane] - playerSize / 2;
-        targetY = laneCenters[currentLane] - playerSize / 2;
+        playerElement.style.top = playerY + "px";
+        
+        obstacles.forEach(obs => obs.element.remove());
         obstacles = [];
+        
         spawnTimer = 0;
         gameSpeed = 350;
         overlay.style.display = 'none';
         timerDisplay.style.display = 'block';
+        playerElement.style.display = 'block';
     }
 
     function gameOver(isWin) {
@@ -290,9 +359,21 @@ game_html = """
 
     function spawnObstacle() {
         const laneIndex = Math.floor(Math.random() * 3);
-        const yPos = laneCenters[laneIndex] - obsHeight / 2;
+        const yPos = laneCenters[laneIndex] - obsSize / 2;
+        
+        const obsImg = document.createElement('img');
+        obsImg.src = obsUrl;
+        obsImg.className = 'obstacle';
+        obsImg.style.top = yPos + "px";
+        obsImg.style.left = "400px";
+        entityLayer.appendChild(obsImg);
+
         obstacles.push({
-            x: 400, y: yPos, width: obsWidth, height: obsHeight, lane: laneIndex
+            element: obsImg,
+            x: 400, 
+            y: yPos,
+            width: obsSize,
+            height: obsSize
         });
     }
 
@@ -307,8 +388,6 @@ game_html = """
         }
         timerDisplay.innerText = Math.ceil(timeLeft) + "s";
 
-        playerY += (targetY - playerY) * 15 * deltaTime;
-
         spawnTimer -= deltaTime;
         if (spawnTimer <= 0) {
             spawnObstacle();
@@ -318,18 +397,23 @@ game_html = """
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i];
             obs.x -= gameSpeed * deltaTime;
+            obs.element.style.left = obs.x + "px";
 
             if (obs.x + obs.width < 0) {
+                obs.element.remove();
                 obstacles.splice(i, 1);
                 continue;
             }
 
-            const padding = 25; 
+            const pRect = playerElement.getBoundingClientRect();
+            const oRect = obs.element.getBoundingClientRect();
+            
+            const pad = 25; 
             if (
-                playerX + padding < obs.x + obs.width - padding &&
-                playerX + playerSize - padding > obs.x + padding &&
-                playerY + padding < obs.y + obs.height - padding &&
-                playerY + playerSize - padding > obs.y + padding
+                pRect.left + pad < oRect.right - pad &&
+                pRect.right - pad > oRect.left + pad &&
+                pRect.top + pad < oRect.bottom - pad &&
+                pRect.bottom - pad > oRect.top + pad
             ) {
                 gameOver(false);
                 return;
@@ -338,49 +422,19 @@ game_html = """
         gameSpeed += 5 * deltaTime;
     }
 
-    // Hàm vẽ chính (Luôn chạy 60 lần/giây)
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawBackground();
-
-        // Vẽ Cherry (Nếu ảnh đã tải xong)
-        if (isObsLoaded) {
-            obstacles.forEach(obs => {
-                ctx.drawImage(obsImg, obs.x, obs.y, obs.width, obs.height);
-            });
-        } else {
-            // Fallback nếu ảnh chưa tải kịp
-            ctx.fillStyle = '#ff4d4d';
-            obstacles.forEach(obs => {
-                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-            });
-        }
-
-        // Vẽ Pudding (Nếu ảnh đã tải xong)
-        if (isPlayerLoaded) {
-            ctx.drawImage(playerImg, playerX, playerY, playerSize, playerSize);
-        } else {
-            // Fallback nếu ảnh chưa tải kịp
-            ctx.fillStyle = '#ffcc00';
-            ctx.fillRect(playerX, playerY, playerSize, playerSize);
-        }
-    }
-
-    // VÒNG LẶP GAME (Sử dụng setInterval để đảm bảo không bao giờ bị đứng)
     let lastTime = Date.now();
     setInterval(() => {
         const now = Date.now();
         const deltaTime = (now - lastTime) / 1000;
         lastTime = now;
         
-        // Cập nhật logic game nếu đang chơi
         if (gameState === 'PLAYING') {
-            update(Math.min(deltaTime, 0.1)); // Giới hạn deltaTime tránh lag
+            update(Math.min(deltaTime, 0.1)); 
         }
         
-        // Luôn luôn vẽ lại màn hình
-        draw();
-    }, 1000 / 60); // 60 FPS
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+    }, 1000 / 60);
 
 </script>
 </body>
