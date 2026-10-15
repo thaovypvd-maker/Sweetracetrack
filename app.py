@@ -1,86 +1,401 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Pudding Race", layout="centered")
+# Cấu hình trang Streamlit
+st.set_page_config(page_title="Sweet Racetrack", page_icon="🍮", layout="centered")
 
+# CSS để ẩn các thành phần thừa của Streamlit, giúp giao diện game nổi bật hơn
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            display: block;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Mã HTML, CSS và JavaScript của Game
 game_html = """
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
-<style>
-    body { margin: 0; display: flex; justify-content: center; background: #FFF0F5; font-family: 'Courier New', monospace; }
-    #game { position: relative; width: 100%; max-width: 500px; height: 600px; overflow: hidden; border: 8px solid #FF69B4; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-    .bg { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
-    #pudding { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: url('https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/8f2d9b66ef4db621044d300264ddbac563444553/pudding.png.jpg') no-repeat center/contain; z-index: 10; transition: bottom 0.15s; }
-    .obs { position: absolute; width: 50px; height: 50px; background: url('https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/8f2d9b66ef4db621044d300264ddbac563444553/obstacle.png.JPG') no-repeat center/contain; z-index: 5; }
-    #ui { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; color: #FF69B4; font-size: 24px; font-weight: bold; text-shadow: 2px 2px 0 #FFF, -2px -2px 0 #FFF; z-index: 20; }
-    .ctrl { position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 30; }
-    button { padding: 10px 20px; font-size: 20px; background: #FF69B4; color: white; border: 3px solid #C71585; border-radius: 10px; font-weight: bold; cursor: pointer; }
-    #start { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; padding: 20px 40px; z-index: 100; }
-    .over { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: #FF0000; font-size: 40px; font-weight: bold; text-align: center; text-shadow: 2px 2px 0 #FFF; z-index: 50; display: none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sweet Racetrack</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #ffe6f0; /* Nền hồng nhạt */
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* Ngăn chặn cuộn trang trên điện thoại khi chơi */
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 600px;
+            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 4px solid #ff99cc;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated; /* Giữ nét pixel */
+        }
+
+        /* Lớp phủ giao diện (Start, Win, Lose) */
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 230, 240, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+        }
+
+        h1 {
+            color: #ff3399;
+            font-size: 24px;
+            text-shadow: 2px 2px 0 #fff;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        p {
+            color: #cc0066;
+            font-size: 12px;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .btn {
+            background-color: #ff66b3;
+            color: white;
+            border: 3px solid #cc0066;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #cc0066;
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
+
+        .btn:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #cc0066;
+        }
+
+        /* Nút điều khiển di chuyển */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 5;
+        }
+
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            background-color: rgba(255, 153, 204, 0.8);
+            border: 3px solid #ff3399;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            box-shadow: 0 4px 0 #cc0066;
+        }
+
+        .control-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #cc0066;
+            background-color: #ff66b3;
+        }
+
+        #timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            color: #ff3399;
+            text-shadow: 2px 2px 0 #fff;
+            z-index: 5;
+        }
+    </style>
 </head>
 <body>
-<div id="game">
-    <img src="https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/8f2d9b66ef4db621044d300264ddbac563444553/background.png.PNG" class="bg">
-    <div id="pudding"></div>
-    <div id="ui"><div>SCORE: <span id="score">0000</span></div><div>TIME: <span id="time">00:30</span></div></div>
-    <div class="over" id="msg">💥 ÔI KHÔNG, VA TRÚNG RỒI! 💥</div>
-    <div class="ctrl"><button id="left">⬅️ TRÁI</button><button id="right">➡️ PHẢI</button></div>
-    <button id="start">🚀 BẮT ĐẦU CHẠY</button>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    
+    <div id="timer">30s</div>
+
+    <div id="controls">
+        <div class="control-btn" id="btnUp">▲</div>
+        <div class="control-btn" id="btnDown">▼</div>
+    </div>
+
+    <div id="overlay">
+        <h1>SWEET<br>RACETRACK</h1>
+        <p>Dùng nút ▲ ▼ để né Cherry.<br>Sống sót 30s để chiến thắng!</p>
+        <button class="btn" id="startBtn">Bắt đầu</button>
+    </div>
 </div>
+
 <script>
-    const g = document.getElementById('game'), p = document.getElementById('pudding'), s = document.getElementById('score'), t = document.getElementById('time'), st = document.getElementById('start'), m = document.getElementById('msg');
-    let play = false, sc = 0, time = 30, lane = 1, obs = [], loop;
-    const pos = [10, 70, 130];
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const timerDisplay = document.getElementById('timer');
     
-    function move(d) {
-        if (!play) return;
-        if (d === 'l' && lane > 0) lane--;
-        if (d === 'r' && lane < 2) lane++;
-        p.style.bottom = pos[lane] + 'px';
+    // Tải hình ảnh từ GitHub (đã chuyển sang link Raw)
+    const bgImg = new Image();
+    bgImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/background.png.PNG";
+
+    const playerImg = new Image();
+    playerImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/Pudding.png.PNG";
+
+    const obsImg = new Image();
+    obsImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/obstacle.png.PNG";
+
+    // Biến trạng thái game
+    let gameState = 'START'; // START, PLAYING, WON, LOST
+    let timeLeft = 30;
+    let lastTime = 0;
+    let spawnTimer = 0;
+    
+    // Cấu hình làn đường (3 làn)
+    // Tọa độ Y của 3 làn đường (ước lượng dựa trên nền 600px)
+    const lanes = [380, 460, 540]; 
+    let currentLane = 1; // Bắt đầu ở làn giữa
+    let playerY = lanes[currentLane];
+    let targetY = lanes[currentLane];
+    let playerX = 60;
+    let playerSize = 60;
+
+    // Mảng chướng ngại vật
+    let obstacles = [];
+    let gameSpeed = 350; // Tốc độ di chuyển của chướng ngại vật (px/s)
+
+    // Xử lý sự kiện bàn phím (cho máy tính)
+    window.addEventListener('keydown', (e) => {
+        if (gameState !== 'PLAYING') return;
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') moveUp();
+        if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') moveDown();
+    });
+
+    // Xử lý nút bấm (cho điện thoại)
+    document.getElementById('btnUp').addEventListener('touchstart', (e) => { e.preventDefault(); moveUp(); });
+    document.getElementById('btnUp').addEventListener('mousedown', moveUp);
+    
+    document.getElementById('btnDown').addEventListener('touchstart', (e) => { e.preventDefault(); moveDown(); });
+    document.getElementById('btnDown').addEventListener('mousedown', moveDown);
+
+    function moveUp() {
+        if (currentLane > 0) {
+            currentLane--;
+            targetY = lanes[currentLane];
+        }
     }
-    
-    function spawn() {
-        if (!play) return;
-        const o = document.createElement('div'); o.className = 'obs';
-        const r = Math.floor(Math.random() * 3);
-        o.style.bottom = pos[r] + 'px'; o.style.right = '-60px'; o.dataset.lane = r;
-        g.appendChild(o); obs.push(o);
+
+    function moveDown() {
+        if (currentLane < 2) {
+            currentLane++;
+            targetY = lanes[currentLane];
+        }
     }
-    
-    function update() {
-        if (!play) return;
-        obs.forEach((o, i) => {
-            let cr = parseFloat(o.style.right) + 5;
-            o.style.right = cr + 'px';
-            if (cr > 180 && cr < 260 && parseInt(o.dataset.lane) === lane) {
-                play = false; clearInterval(loop); m.style.display = 'block'; st.innerText = 'CHƠI LẠI 💖'; st.style.display = 'block';
-            }
-            if (cr > 550) { o.remove(); obs.splice(i, 1); sc += 10; s.innerText = String(sc).padStart(4, '0'); }
+
+    // Nút bắt đầu / chơi lại
+    document.getElementById('startBtn').addEventListener('click', startGame);
+
+    function startGame() {
+        gameState = 'PLAYING';
+        timeLeft = 30;
+        currentLane = 1;
+        playerY = lanes[currentLane];
+        targetY = lanes[currentLane];
+        obstacles = [];
+        spawnTimer = 0;
+        gameSpeed = 350;
+        overlay.style.display = 'none';
+        timerDisplay.style.display = 'block';
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function gameOver(isWin) {
+        gameState = isWin ? 'WON' : 'LOST';
+        timerDisplay.style.display = 'none';
+        overlay.style.display = 'flex';
+        
+        if (isWin) {
+            overlay.innerHTML = `
+                <h1 style="color: #ffcc00;">CHIẾN THẮNG!</h1>
+                <p style="color: #ff3399;">Bạn đã về đích an toàn!<br>Pudding rất vui!</p>
+                <button class="btn" id="startBtn">Chơi lại</button>
+            `;
+        } else {
+            overlay.innerHTML = `
+                <h1 style="color: #ff3333;">THUA CUỘC!</h1>
+                <p style="color: #ff3399;">Pudding đã dính chướng ngại vật!<br>Thử lại nhé!</p>
+                <button class="btn" id="startBtn">Thử lại</button>
+            `;
+        }
+        // Gán lại sự kiện cho nút mới
+        document.getElementById('startBtn').addEventListener('click', startGame);
+    }
+
+    function spawnObstacle() {
+        const laneIndex = Math.floor(Math.random() * 3);
+        const yPos = lanes[laneIndex] - 10; // Điều chỉnh để khớp với làn
+        obstacles.push({
+            x: 400, // Bắt đầu từ bên phải màn hình
+            y: yPos,
+            width: 50,
+            height: 50,
+            lane: laneIndex
         });
-        if (Math.random() < 0.03) spawn();
-        requestAnimationFrame(update);
     }
-    
-    function start() {
-        play = true; sc = 0; time = 30; lane = 1; obs.forEach(o => o.remove()); obs = [];
-        s.innerText = '0000'; t.innerText = '00:30'; m.style.display = 'none'; st.style.display = 'none'; p.style.bottom = '70px';
-        const timer = setInterval(() => {
-            if (!play) { clearInterval(timer); return; }
-            time--; t.innerText = '00:' + String(time).padStart(2, '0');
-            if (time <= 0) { play = false; clearInterval(timer); m.innerText = '🎉 CHÚC MỪNG! VỀ ĐÍCH! 🎉'; m.style.color = '#00FF00'; m.style.display = 'block'; st.innerText = 'CHƠI LẠI 💖'; st.style.display = 'block'; }
-        }, 1000);
-        loop = requestAnimationFrame(update);
+
+    function update(deltaTime) {
+        if (gameState !== 'PLAYING') return;
+
+        // Đếm ngược thời gian
+        timeLeft -= deltaTime;
+        if (timeLeft <= 0) {
+            timeLeft = 0;
+            gameOver(true);
+            return;
+        }
+        timerDisplay.innerText = Math.ceil(timeLeft) + "s";
+
+        // Di chuyển mượt mà nhân vật theo làn
+        playerY += (targetY - playerY) * 15 * deltaTime;
+
+        // Tạo chướng ngại vật
+        spawnTimer -= deltaTime;
+        if (spawnTimer <= 0) {
+            spawnObstacle();
+            // Tốc độ tạo chướng ngại vật nhanh dần theo thời gian
+            spawnTimer = Math.max(0.4, 1.2 - (30 - timeLeft) * 0.02); 
+        }
+
+        // Cập nhật chướng ngại vật
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            obs.x -= gameSpeed * deltaTime;
+
+            // Xóa chướng ngại vật khi ra khỏi màn hình
+            if (obs.x + obs.width < 0) {
+                obstacles.splice(i, 1);
+                continue;
+            }
+
+            // Kiểm tra va chạm (Collision Detection)
+            // Thu nhỏ hitbox một chút để chơi dễ chịu hơn
+            const padding = 10;
+            if (
+                playerX + padding < obs.x + obs.width - padding &&
+                playerX + playerSize - padding > obs.x + padding &&
+                playerY + padding < obs.y + obs.height - padding &&
+                playerY + playerSize - padding > obs.y + padding
+            ) {
+                gameOver(false);
+                return;
+            }
+        }
+        
+        // Tăng tốc độ game theo thời gian
+        gameSpeed += 5 * deltaTime;
     }
-    
-    st.addEventListener('click', start);
-    document.getElementById('left').addEventListener('click', () => move('l'));
-    document.getElementById('right').addEventListener('click', () => move('r'));
-    document.addEventListener('keydown', e => { if (e.key === 'ArrowLeft') move('l'); if (e.key === 'ArrowRight') move('r'); });
+
+    function draw() {
+        // Xóa canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Vẽ nền
+        if (bgImg.complete) {
+            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = '#f4c2c2';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Vẽ chướng ngại vật
+        if (obsImg.complete) {
+            obstacles.forEach(obs => {
+                ctx.drawImage(obsImg, obs.x, obs.y, obs.width, obs.height);
+            });
+        }
+
+        // Vẽ nhân vật
+        if (playerImg.complete) {
+            ctx.drawImage(playerImg, playerX, playerY, playerSize, playerSize);
+        } else {
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillRect(playerX, playerY, playerSize, playerSize);
+        }
+    }
+
+    function gameLoop(timestamp) {
+        const deltaTime = (timestamp - lastTime) / 1000;
+        lastTime = timestamp;
+
+        // Giới hạn deltaTime để tránh lag khi chuyển tab
+        const safeDeltaTime = Math.min(deltaTime, 0.1);
+
+        update(safeDeltaTime);
+        draw();
+
+        if (gameState === 'PLAYING' || gameState === 'WON' || gameState === 'LOST') {
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    // Vẽ màn hình chờ ban đầu
+    window.onload = () => {
+        draw();
+    };
+
 </script>
 </body>
 </html>
 """
 
-components.html(game_html, height=620)
+# Nhúng game vào Streamlit
+components.html(game_html, height=650)
