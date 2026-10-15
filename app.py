@@ -36,14 +36,14 @@ game_html = """
         body {
             margin: 0;
             padding: 0;
-            background-color: #ffe6f0; /* Nền hồng nhạt */
+            background-color: #ffe6f0;
             font-family: 'VT323', monospace;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             overflow: hidden;
-            touch-action: none; /* Ngăn chặn cuộn trang trên điện thoại khi chơi */
+            touch-action: none;
         }
 
         #game-container {
@@ -61,17 +61,16 @@ game_html = """
             display: block;
             width: 100%;
             height: 100%;
-            image-rendering: pixelated; /* Giữ nét pixel */
+            image-rendering: pixelated;
         }
 
-        /* Lớp phủ giao diện (Start, Win, Lose) */
         #overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255, 230, 240, 0.9);
+            background: rgba(255, 230, 240, 0.95);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -82,17 +81,17 @@ game_html = """
 
         h1 {
             color: #ff3399;
-            font-size: 42px;
+            font-size: 46px;
             text-shadow: 2px 2px 0 #fff;
             margin-bottom: 20px;
-            line-height: 1.2;
+            line-height: 1.1;
         }
 
         p {
             color: #cc0066;
-            font-size: 24px;
+            font-size: 26px;
             margin-bottom: 30px;
-            line-height: 1.4;
+            line-height: 1.3;
         }
 
         .btn {
@@ -101,7 +100,7 @@ game_html = """
             border: 3px solid #cc0066;
             padding: 15px 30px;
             font-family: 'VT323', monospace;
-            font-size: 28px;
+            font-size: 30px;
             border-radius: 8px;
             cursor: pointer;
             box-shadow: 0 5px 0 #cc0066;
@@ -114,7 +113,6 @@ game_html = """
             box-shadow: 0 0 0 #cc0066;
         }
 
-        /* Nút điều khiển di chuyển */
         #controls {
             position: absolute;
             bottom: 20px;
@@ -126,24 +124,24 @@ game_html = """
         }
 
         .control-btn {
-            width: 75px;
-            height: 75px;
-            background-color: rgba(255, 153, 204, 0.8);
-            border: 3px solid #ff3399;
+            width: 80px;
+            height: 80px;
+            background-color: rgba(255, 153, 204, 0.9);
+            border: 4px solid #ff3399;
             border-radius: 50%;
             color: white;
-            font-size: 32px;
+            font-size: 36px;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
-            box-shadow: 0 4px 0 #cc0066;
+            box-shadow: 0 5px 0 #cc0066;
         }
 
         .control-btn:active {
-            transform: translateY(4px);
+            transform: translateY(5px);
             box-shadow: 0 0 0 #cc0066;
             background-color: #ff66b3;
         }
@@ -152,7 +150,7 @@ game_html = """
             position: absolute;
             top: 20px;
             right: 20px;
-            font-size: 36px;
+            font-size: 40px;
             color: #ff3399;
             text-shadow: 2px 2px 0 #fff;
             z-index: 5;
@@ -184,7 +182,7 @@ game_html = """
     const overlay = document.getElementById('overlay');
     const timerDisplay = document.getElementById('timer');
     
-    // Tải hình ảnh nhân vật và chướng ngại vật từ GitHub
+    // Tải hình ảnh nhân vật và chướng ngại vật
     const playerImg = new Image();
     playerImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/Pudding.png.PNG";
 
@@ -192,84 +190,83 @@ game_html = """
     obsImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/obstacle.png.PNG";
 
     // Biến trạng thái game
-    let gameState = 'START'; // START, PLAYING, WON, LOST
+    let gameState = 'START'; 
     let timeLeft = 30;
     let lastTime = 0;
     let spawnTimer = 0;
     
-    // KÍCH THƯỚC ĐÃ ĐƯỢC TĂNG LÊN RẤT TO
-    let playerSize = 110; 
-    let obsWidth = 100;
-    let obsHeight = 100;
+    // KÍCH THƯỚC ĐÃ ĐƯỢC TĂNG LÊN (Pudding to hơn hẳn Cherry)
+    let playerSize = 150; 
+    let obsWidth = 80;
+    let obsHeight = 80;
 
-    // Cấu hình làn đường (3 làn) - Được tính toán chính xác dựa trên background tự vẽ
-    // Background đường chạy từ Y=250 đến Y=600 (chiều cao 350px)
-    // Chia làm 3 làn: mỗi làn cao ~116px
-    const laneCenters = [308, 424, 541]; 
-    let currentLane = 1; // Bắt đầu ở làn giữa
+    // Cấu hình làn đường (3 làn)
+    // Tọa độ Y của TÂM 3 làn đường (đã tính toán lại cho phù hợp với background mới)
+    const laneCenters = [310, 420, 530]; 
+    let currentLane = 1; 
     
-    // Tính toán tọa độ top-left (góc trên bên trái) để vẽ
-    let playerY = laneCenters[currentLane] - playerSize / 2;
-    let targetY = laneCenters[currentLane] - playerSize / 2;
-    let playerX = 40; // Lùi vào một chút để không sát lề
+    let playerY = laneCenters[currentLane] - playerSize / 2 + 10; // +10 để nhân vật nằm đúng tâm làn
+    let targetY = laneCenters[currentLane] - playerSize / 2 + 10;
+    let playerX = 30; 
 
-    // Mảng chướng ngại vật
     let obstacles = [];
-    let gameSpeed = 350; // Tốc độ di chuyển của chướng ngại vật (px/s)
+    let gameSpeed = 350; 
 
-    // Hàm vẽ Background tự động (thay thế ảnh nền)
+    // Hàm vẽ Background tự động theo phong cách Pixel Art
     function drawBackground() {
-        // 1. Vẽ bầu trời (màu xanh da trời pixel)
-        ctx.fillStyle = '#a0e0ff'; // Màu xanh da trời nhạt
-        ctx.fillRect(0, 0, canvas.width, 250);
+        // 1. Vẽ bầu trời (Màu xanh da trời pixel)
+        ctx.fillStyle = '#8cd9ff'; 
+        ctx.fillRect(0, 0, canvas.width, 260);
 
-        // 2. Vẽ mặt trời (khối vuông pixel)
-        ctx.fillStyle = '#ffb3d9'; // Màu hồng
-        ctx.beginPath();
-        ctx.arc(300, 80, 45, 0, Math.PI * 2);
-        ctx.fill();
+        // 2. Vẽ mặt trời (Khối vuông pixel)
+        ctx.fillStyle = '#ffb3d9'; 
+        ctx.fillRect(280, 60, 60, 60); // Mặt trời chính
+        // Tia nắng
+        ctx.fillRect(260, 80, 10, 20); ctx.fillRect(350, 80, 10, 20);
+        ctx.fillRect(300, 40, 20, 10); ctx.fillRect(300, 130, 20, 10);
 
-        // 3. Vẽ mây (các khối vuông chồng lên nhau)
-        ctx.fillStyle = '#ffd1ec';
-        ctx.beginPath(); ctx.arc(60, 80, 30, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(100, 80, 40, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(140, 80, 30, 0, Math.PI*2); ctx.fill();
+        // 3. Vẽ mây (Các khối vuông chồng lên nhau)
+        ctx.fillStyle = '#ffd1ec'; 
+        // Mây trái
+        ctx.fillRect(50, 80, 100, 30);
+        ctx.fillRect(70, 60, 60, 30);
+        ctx.fillRect(30, 100, 140, 20);
+        // Mây phải
+        ctx.fillRect(280, 100, 90, 30);
+        ctx.fillRect(300, 80, 50, 30);
 
-        // 4. Vẽ núi kem (pixel art)
-        // Núi hồng trái dâu
-        ctx.fillStyle = '#f4c2c2';
-        ctx.beginPath(); ctx.moveTo(-50, 250); ctx.lineTo(80, 120); ctx.lineTo(210, 250); ctx.fill();
-        // Núi nâu giữa
+        // 4. Vẽ núi kem (Pixel Art)
+        // Núi hồng (Dâu)
+        ctx.fillStyle = '#ffcce0';
+        ctx.beginPath(); ctx.moveTo(-50, 260); ctx.lineTo(80, 140); ctx.lineTo(210, 260); ctx.fill();
+        // Núi nâu (Socola)
         ctx.fillStyle = '#8c5a3c';
-        ctx.beginPath(); ctx.moveTo(150, 250); ctx.lineTo(260, 160); ctx.lineTo(370, 250); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(150, 260); ctx.lineTo(260, 160); ctx.lineTo(370, 260); ctx.fill();
         // Núi hồng phải
-        ctx.fillStyle = '#f4c2c2';
-        ctx.beginPath(); ctx.moveTo(300, 250); ctx.lineTo(400, 140); ctx.lineTo(500, 250); ctx.fill();
+        ctx.fillStyle = '#ffcce0';
+        ctx.beginPath(); ctx.moveTo(300, 260); ctx.lineTo(400, 150); ctx.lineTo(500, 260); ctx.fill();
 
-        // 5. Vẽ mặt đường (đất)
-        ctx.fillStyle = '#d2a679'; // Màu nâu đất
-        ctx.fillRect(0, 250, canvas.width, 350);
+        // 5. Vẽ mặt đường (đất) theo dạng lưới pixel
+        ctx.fillStyle = '#d2a679'; 
+        ctx.fillRect(0, 260, canvas.width, 340);
 
-        // 6. Vẽ 3 làn đường (Vạch kẻ hồng)
-        ctx.strokeStyle = '#ff99cc';
-        ctx.lineWidth = 6;
-        ctx.setLineDash([25, 20]); // Nét đứt
-
-        // Vạch phân cách làn 1 và 2
-        ctx.beginPath(); ctx.moveTo(0, 366); ctx.lineTo(canvas.width, 366); ctx.stroke();
+        // 6. Vẽ 3 làn đường (Vạch kẻ hồng dạng khối pixel)
+        ctx.fillStyle = '#ff99cc';
+        // Vạch phân cách làn 1 và 2 (dạng nét đứt khối)
+        for (let i = 0; i < 400; i += 40) {
+            ctx.fillRect(i, 365, 20, 10);
+        }
         // Vạch phân cách làn 2 và 3
-        ctx.beginPath(); ctx.moveTo(0, 483); ctx.lineTo(canvas.width, 483); ctx.stroke();
+        for (let i = 0; i < 400; i += 40) {
+            ctx.fillRect(i, 475, 20, 10);
+        }
         
-        // Vẽ thêm các đốm nhỏ trên đường cho sinh động (tùy chọn)
-        ctx.setLineDash([]);
+        // Vẽ thêm các đốm nhỏ trên đường cho sinh động (pixel art texture)
         ctx.fillStyle = '#b3804d';
-        ctx.fillRect(50, 290, 20, 4);
-        ctx.fillRect(200, 330, 15, 4);
-        ctx.fillRect(350, 300, 25, 4);
-        ctx.fillRect(100, 400, 20, 4);
-        ctx.fillRect(280, 450, 15, 4);
-        ctx.fillRect(150, 520, 25, 4);
-        ctx.fillRect(300, 560, 20, 4);
+        ctx.fillRect(50, 290, 15, 5); ctx.fillRect(200, 330, 10, 5);
+        ctx.fillRect(350, 300, 20, 5); ctx.fillRect(100, 400, 15, 5);
+        ctx.fillRect(280, 450, 10, 5); ctx.fillRect(150, 520, 20, 5);
+        ctx.fillRect(300, 560, 15, 5); ctx.fillRect(50, 580, 15, 5);
     }
 
     // Xử lý sự kiện bàn phím (cho máy tính)
@@ -289,14 +286,14 @@ game_html = """
     function moveUp() {
         if (currentLane > 0) {
             currentLane--;
-            targetY = laneCenters[currentLane] - playerSize / 2;
+            targetY = laneCenters[currentLane] - playerSize / 2 + 10;
         }
     }
 
     function moveDown() {
         if (currentLane < 2) {
             currentLane++;
-            targetY = laneCenters[currentLane] - playerSize / 2;
+            targetY = laneCenters[currentLane] - playerSize / 2 + 10;
         }
     }
 
@@ -307,8 +304,8 @@ game_html = """
         gameState = 'PLAYING';
         timeLeft = 30;
         currentLane = 1;
-        playerY = laneCenters[currentLane] - playerSize / 2;
-        targetY = laneCenters[currentLane] - playerSize / 2;
+        playerY = laneCenters[currentLane] - playerSize / 2 + 10;
+        targetY = laneCenters[currentLane] - playerSize / 2 + 10;
         obstacles = [];
         spawnTimer = 0;
         gameSpeed = 350;
@@ -336,16 +333,14 @@ game_html = """
                 <button class="btn" id="startBtn">Thử lại</button>
             `;
         }
-        // Gán lại sự kiện cho nút mới
         document.getElementById('startBtn').addEventListener('click', startGame);
     }
 
     function spawnObstacle() {
         const laneIndex = Math.floor(Math.random() * 3);
-        // Tính toán tọa độ top-left dựa trên tâm làn đường
-        const yPos = laneCenters[laneIndex] - obsHeight / 2;
+        const yPos = laneCenters[laneIndex] - obsHeight / 2 + 10;
         obstacles.push({
-            x: 400, // Bắt đầu từ bên phải màn hình
+            x: 400, 
             y: yPos,
             width: obsWidth,
             height: obsHeight,
@@ -356,7 +351,6 @@ game_html = """
     function update(deltaTime) {
         if (gameState !== 'PLAYING') return;
 
-        // Đếm ngược thời gian
         timeLeft -= deltaTime;
         if (timeLeft <= 0) {
             timeLeft = 0;
@@ -365,31 +359,25 @@ game_html = """
         }
         timerDisplay.innerText = Math.ceil(timeLeft) + "s";
 
-        // Di chuyển mượt mà nhân vật theo làn
         playerY += (targetY - playerY) * 15 * deltaTime;
 
-        // Tạo chướng ngại vật
         spawnTimer -= deltaTime;
         if (spawnTimer <= 0) {
             spawnObstacle();
-            // Tốc độ tạo chướng ngại vật nhanh dần theo thời gian
             spawnTimer = Math.max(0.4, 1.2 - (30 - timeLeft) * 0.02); 
         }
 
-        // Cập nhật chướng ngại vật
         for (let i = obstacles.length - 1; i >= 0; i--) {
             let obs = obstacles[i];
             obs.x -= gameSpeed * deltaTime;
 
-            // Xóa chướng ngại vật khi ra khỏi màn hình
             if (obs.x + obs.width < 0) {
                 obstacles.splice(i, 1);
                 continue;
             }
 
-            // Kiểm tra va chạm (Collision Detection)
-            // Đã điều chỉnh padding (khoảng đệm) cho hitbox vừa vặn hơn với hình to
-            const padding = 20; // Tăng padding để tránh va chạm ảo do hình to
+            // Kiểm tra va chạm (Padding được tinh chỉnh cho Pudding to hơn)
+            const padding = 30; 
             if (
                 playerX + padding < obs.x + obs.width - padding &&
                 playerX + playerSize - padding > obs.x + padding &&
@@ -401,25 +389,19 @@ game_html = """
             }
         }
         
-        // Tăng tốc độ game theo thời gian
         gameSpeed += 5 * deltaTime;
     }
 
     function draw() {
-        // Xóa canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Vẽ Background tự tạo
         drawBackground();
 
-        // Vẽ chướng ngại vật
         if (obsImg.complete) {
             obstacles.forEach(obs => {
                 ctx.drawImage(obsImg, obs.x, obs.y, obs.width, obs.height);
             });
         }
 
-        // Vẽ nhân vật
         if (playerImg.complete) {
             ctx.drawImage(playerImg, playerX, playerY, playerSize, playerSize);
         } else {
@@ -431,8 +413,6 @@ game_html = """
     function gameLoop(timestamp) {
         const deltaTime = (timestamp - lastTime) / 1000;
         lastTime = timestamp;
-
-        // Giới hạn deltaTime để tránh lag khi chuyển tab
         const safeDeltaTime = Math.min(deltaTime, 0.1);
 
         update(safeDeltaTime);
@@ -443,7 +423,6 @@ game_html = """
         }
     }
 
-    // Vẽ màn hình chờ ban đầu
     window.onload = () => {
         draw();
     };
