@@ -219,24 +219,24 @@ game_html = """
 
     // Hàm vẽ Background tự động (thay thế ảnh nền)
     function drawBackground() {
-        // 1. Vẽ bầu trời
+        // 1. Vẽ bầu trời (màu xanh da trời pixel)
         ctx.fillStyle = '#a0e0ff'; // Màu xanh da trời nhạt
         ctx.fillRect(0, 0, canvas.width, 250);
 
-        // 2. Vẽ mặt trời
+        // 2. Vẽ mặt trời (khối vuông pixel)
         ctx.fillStyle = '#ffb3d9'; // Màu hồng
         ctx.beginPath();
         ctx.arc(300, 80, 45, 0, Math.PI * 2);
         ctx.fill();
 
-        // 3. Vẽ mây
+        // 3. Vẽ mây (các khối vuông chồng lên nhau)
         ctx.fillStyle = '#ffd1ec';
         ctx.beginPath(); ctx.arc(60, 80, 30, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(100, 80, 40, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(140, 80, 30, 0, Math.PI*2); ctx.fill();
 
-        // 4. Vẽ núi kem (hồng và nâu)
-        // Núi hồng trái
+        // 4. Vẽ núi kem (pixel art)
+        // Núi hồng trái dâu
         ctx.fillStyle = '#f4c2c2';
         ctx.beginPath(); ctx.moveTo(-50, 250); ctx.lineTo(80, 120); ctx.lineTo(210, 250); ctx.fill();
         // Núi nâu giữa
