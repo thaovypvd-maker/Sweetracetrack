@@ -82,7 +82,7 @@ game_html = """
 
         h1 {
             color: #ff3399;
-            font-size: 42px; /* Tăng size do font VT323 nhỏ hơn */
+            font-size: 42px;
             text-shadow: 2px 2px 0 #fff;
             margin-bottom: 20px;
             line-height: 1.2;
@@ -90,7 +90,7 @@ game_html = """
 
         p {
             color: #cc0066;
-            font-size: 24px; /* Tăng size */
+            font-size: 24px;
             margin-bottom: 30px;
             line-height: 1.4;
         }
@@ -101,7 +101,7 @@ game_html = """
             border: 3px solid #cc0066;
             padding: 15px 30px;
             font-family: 'VT323', monospace;
-            font-size: 28px; /* Tăng size */
+            font-size: 28px;
             border-radius: 8px;
             cursor: pointer;
             box-shadow: 0 5px 0 #cc0066;
@@ -126,13 +126,13 @@ game_html = """
         }
 
         .control-btn {
-            width: 70px;
-            height: 70px;
+            width: 75px;
+            height: 75px;
             background-color: rgba(255, 153, 204, 0.8);
             border: 3px solid #ff3399;
             border-radius: 50%;
             color: white;
-            font-size: 30px;
+            font-size: 32px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -152,7 +152,7 @@ game_html = """
             position: absolute;
             top: 20px;
             right: 20px;
-            font-size: 36px; /* Tăng size */
+            font-size: 36px;
             color: #ff3399;
             text-shadow: 2px 2px 0 #fff;
             z-index: 5;
@@ -184,10 +184,7 @@ game_html = """
     const overlay = document.getElementById('overlay');
     const timerDisplay = document.getElementById('timer');
     
-    // Tải hình ảnh từ GitHub (đã chuyển sang link Raw)
-    const bgImg = new Image();
-    bgImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/background.png.PNG";
-
+    // Tải hình ảnh nhân vật và chướng ngại vật từ GitHub
     const playerImg = new Image();
     playerImg.src = "https://raw.githubusercontent.com/thaovypvd-maker/Sweetracetrack/e187630e00469df1a7e0c774bd8188d1eb4b3b3b/Pudding.png.PNG";
 
@@ -200,24 +197,80 @@ game_html = """
     let lastTime = 0;
     let spawnTimer = 0;
     
-    // Kích thước nhân vật và chướng ngại vật (ĐÃ TĂNG KÍCH THƯỚC)
-    let playerSize = 80; 
-    let obsWidth = 70;
-    let obsHeight = 70;
+    // KÍCH THƯỚC ĐÃ ĐƯỢC TĂNG LÊN RẤT TO
+    let playerSize = 110; 
+    let obsWidth = 100;
+    let obsHeight = 100;
 
-    // Cấu hình làn đường (3 làn)
-    // Tọa độ Y của TÂM 3 làn đường dựa trên nền 600px
-    const laneCenters = [375, 460, 550]; 
+    // Cấu hình làn đường (3 làn) - Được tính toán chính xác dựa trên background tự vẽ
+    // Background đường chạy từ Y=250 đến Y=600 (chiều cao 350px)
+    // Chia làm 3 làn: mỗi làn cao ~116px
+    const laneCenters = [308, 424, 541]; 
     let currentLane = 1; // Bắt đầu ở làn giữa
     
     // Tính toán tọa độ top-left (góc trên bên trái) để vẽ
     let playerY = laneCenters[currentLane] - playerSize / 2;
     let targetY = laneCenters[currentLane] - playerSize / 2;
-    let playerX = 50; // Lùi vào một chút để không sát lề
+    let playerX = 40; // Lùi vào một chút để không sát lề
 
     // Mảng chướng ngại vật
     let obstacles = [];
     let gameSpeed = 350; // Tốc độ di chuyển của chướng ngại vật (px/s)
+
+    // Hàm vẽ Background tự động (thay thế ảnh nền)
+    function drawBackground() {
+        // 1. Vẽ bầu trời
+        ctx.fillStyle = '#a0e0ff'; // Màu xanh da trời nhạt
+        ctx.fillRect(0, 0, canvas.width, 250);
+
+        // 2. Vẽ mặt trời
+        ctx.fillStyle = '#ffb3d9'; // Màu hồng
+        ctx.beginPath();
+        ctx.arc(300, 80, 45, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Vẽ mây
+        ctx.fillStyle = '#ffd1ec';
+        ctx.beginPath(); ctx.arc(60, 80, 30, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(100, 80, 40, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(140, 80, 30, 0, Math.PI*2); ctx.fill();
+
+        // 4. Vẽ núi kem (hồng và nâu)
+        // Núi hồng trái
+        ctx.fillStyle = '#f4c2c2';
+        ctx.beginPath(); ctx.moveTo(-50, 250); ctx.lineTo(80, 120); ctx.lineTo(210, 250); ctx.fill();
+        // Núi nâu giữa
+        ctx.fillStyle = '#8c5a3c';
+        ctx.beginPath(); ctx.moveTo(150, 250); ctx.lineTo(260, 160); ctx.lineTo(370, 250); ctx.fill();
+        // Núi hồng phải
+        ctx.fillStyle = '#f4c2c2';
+        ctx.beginPath(); ctx.moveTo(300, 250); ctx.lineTo(400, 140); ctx.lineTo(500, 250); ctx.fill();
+
+        // 5. Vẽ mặt đường (đất)
+        ctx.fillStyle = '#d2a679'; // Màu nâu đất
+        ctx.fillRect(0, 250, canvas.width, 350);
+
+        // 6. Vẽ 3 làn đường (Vạch kẻ hồng)
+        ctx.strokeStyle = '#ff99cc';
+        ctx.lineWidth = 6;
+        ctx.setLineDash([25, 20]); // Nét đứt
+
+        // Vạch phân cách làn 1 và 2
+        ctx.beginPath(); ctx.moveTo(0, 366); ctx.lineTo(canvas.width, 366); ctx.stroke();
+        // Vạch phân cách làn 2 và 3
+        ctx.beginPath(); ctx.moveTo(0, 483); ctx.lineTo(canvas.width, 483); ctx.stroke();
+        
+        // Vẽ thêm các đốm nhỏ trên đường cho sinh động (tùy chọn)
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#b3804d';
+        ctx.fillRect(50, 290, 20, 4);
+        ctx.fillRect(200, 330, 15, 4);
+        ctx.fillRect(350, 300, 25, 4);
+        ctx.fillRect(100, 400, 20, 4);
+        ctx.fillRect(280, 450, 15, 4);
+        ctx.fillRect(150, 520, 25, 4);
+        ctx.fillRect(300, 560, 20, 4);
+    }
 
     // Xử lý sự kiện bàn phím (cho máy tính)
     window.addEventListener('keydown', (e) => {
@@ -336,7 +389,7 @@ game_html = """
 
             // Kiểm tra va chạm (Collision Detection)
             // Đã điều chỉnh padding (khoảng đệm) cho hitbox vừa vặn hơn với hình to
-            const padding = 15;
+            const padding = 20; // Tăng padding để tránh va chạm ảo do hình to
             if (
                 playerX + padding < obs.x + obs.width - padding &&
                 playerX + playerSize - padding > obs.x + padding &&
@@ -356,13 +409,8 @@ game_html = """
         // Xóa canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Vẽ nền
-        if (bgImg.complete) {
-            ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-        } else {
-            ctx.fillStyle = '#f4c2c2';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+        // Vẽ Background tự tạo
+        drawBackground();
 
         // Vẽ chướng ngại vật
         if (obsImg.complete) {
